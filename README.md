@@ -98,6 +98,31 @@ Here are some general principles you should try to adhere to:
 
 Help us prioritize! Please react with thumbs-up to issues/PRs you care about most. We look at reaction counts when planning work.
 
+### Companion tracker
+
+Companion firmware sends a private location text to each favorited **chat**
+contact once per hour (first report one hour after startup). Enable GPS in the
+connected app and mark the intended recipients as favorites. Reports contain
+latitude/longitude in decimal degrees, HDOP, and satellites in view. An hour
+without a valid enabled GPS fix is skipped; no static configured position is sent.
+Unavailable quality fields are reported as `unknown`. MicroNMEA receivers use
+GSV for satellites in view (not the GGA count of satellites used for a fix);
+receivers must output GSV sentences for this field.
+
+Press the user button three times within five seconds to send
+`HELP! I need assistance.` privately to the same favorited chat contacts.
+The five-second window runs from the first press to the third; switch bounce
+and holding the button do not count as extra presses. Each group of three
+presses triggers once, independently of the current UI screen. Existing UI
+button actions still apply. Help includes GPS details when a fix is available
+and is still sent without GPS. Devices without a user button cannot trigger help.
+
+Messages are queued one recipient at a time, with help taking priority over
+periodic reports. Repeated help triggers while a help batch is pending are
+coalesced. No favorites means no transmission. These are best-effort LoRa
+messages, not a guaranteed emergency service: there are no automatic
+delivery retries or delivery confirmation in the tracker UI.
+
 ### Running unit tests
 
 To run unit tests, run the following command:
