@@ -41,7 +41,7 @@ public:
   }
 
   static void formatLocation(char* out, size_t size, long lat, long lon, long hdop, long satellites) {
-    char dilution[16], view[16];
+    char dilution[24], view[24];
     if (hdop < 0) {
       snprintf(dilution, sizeof(dilution), "unknown");
     } else {

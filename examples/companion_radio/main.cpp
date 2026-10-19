@@ -300,10 +300,15 @@ void loop() {
   the_mesh.loop();
   interface_manager.loop();
   sensors.loop();
-#ifdef PIN_USER_BTN
-  the_mesh.checkTrackerButton(digitalRead(PIN_USER_BTN) == USER_BTN_PRESSED);
-#elif defined(PIN_USER_BTN_ANA)
-  the_mesh.checkTrackerButton(analogRead(PIN_USER_BTN_ANA) < 20);
+#if defined(PIN_USER_BTN) || defined(PIN_USER_BTN_ANA)
+  bool tracker_button_pressed = false;
+  #ifdef PIN_USER_BTN
+    tracker_button_pressed = digitalRead(PIN_USER_BTN) == USER_BTN_PRESSED;
+  #endif
+  #ifdef PIN_USER_BTN_ANA
+    tracker_button_pressed |= analogRead(PIN_USER_BTN_ANA) < 20;
+  #endif
+  the_mesh.checkTrackerButton(tracker_button_pressed);
 #endif
 #ifdef DISPLAY_CLASS
   ui_task.loop();

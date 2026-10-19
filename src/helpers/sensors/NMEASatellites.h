@@ -16,12 +16,13 @@ class NMEASatellites {
 public:
   // The caller must validate the NMEA checksum first.
   void update(const char* sentence, uint32_t now) {
-    if (strlen(sentence) < 7 || sentence[0] != '$' || sentence[1] != 'G' ||
+    if (strlen(sentence) < 7 || sentence[0] != '$' ||
+        (sentence[1] != 'G' && strncmp(sentence + 1, "BD", 2) != 0) ||
         strncmp(sentence + 3, "GSV,", 4) != 0) return;
     unsigned total, part, count;
     if (sscanf(sentence + 7, "%u,%u,%u", &total, &part, &count) != 3 ||
         total == 0 || part != 1 || count > 255) return;
-    char talker = sentence[2] == 'D' ? 'B' : sentence[2]; // BeiDou: GB or GD
+    char talker = sentence[2] == 'D' ? 'B' : sentence[2]; // BeiDou: GB, GD or BD
     View* slot = nullptr;
     for (auto& view : views) {
       if (view.talker == talker) {

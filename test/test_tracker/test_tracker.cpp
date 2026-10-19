@@ -94,6 +94,7 @@ TEST(NMEASatellites, DoesNotDoubleCountCombinedGNSSOrBeiDouAliases) {
   NMEASatellites satellites;
   satellites.update("$GBGSV,2,1,08,", 0);
   satellites.update("$GDGSV,2,1,08,", 0);
+  satellites.update("$BDGSV,2,1,08,", 0);
   EXPECT_EQ(satellites.count(0), 8);
   satellites.update("$GNGSV,4,1,16,", 0);
   EXPECT_EQ(satellites.count(0), 16);
