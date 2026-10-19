@@ -2,6 +2,10 @@
 #include <Mesh.h>
 #include "MyMesh.h"
 
+#ifndef USER_BTN_PRESSED
+#define USER_BTN_PRESSED LOW
+#endif
+
 // Believe it or not, this std C function is busted on some platforms!
 static uint32_t _atoi(const char* sp) {
   uint32_t n = 0;
@@ -287,12 +291,25 @@ void setup() {
 #endif
 
   board.onBootComplete();
+#ifdef PIN_USER_BTN
+  pinMode(PIN_USER_BTN, USER_BTN_PRESSED == LOW ? INPUT_PULLUP : INPUT_PULLDOWN);
+#endif
 }
 
 void loop() {
   the_mesh.loop();
   interface_manager.loop();
   sensors.loop();
+#if defined(PIN_USER_BTN) || defined(PIN_USER_BTN_ANA)
+  bool tracker_button_pressed = false;
+  #ifdef PIN_USER_BTN
+    tracker_button_pressed = digitalRead(PIN_USER_BTN) == USER_BTN_PRESSED;
+  #endif
+  #ifdef PIN_USER_BTN_ANA
+    tracker_button_pressed |= analogRead(PIN_USER_BTN_ANA) < 20;
+  #endif
+  the_mesh.checkTrackerButton(tracker_button_pressed);
+#endif
 #ifdef DISPLAY_CLASS
   ui_task.loop();
 #endif

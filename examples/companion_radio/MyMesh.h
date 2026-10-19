@@ -24,6 +24,7 @@
 
 #include "DataStore.h"
 #include "NodePrefs.h"
+#include "Tracker.h"
 
 #include <RTClib.h>
 #include <helpers/ArduinoHelpers.h>
@@ -122,6 +123,9 @@ public:
   void loop();
   void handleCmdFrame(size_t len);
   bool advert();
+  void checkTrackerButton(bool pressed) {
+    if (_tracker.checkButton(pressed, millis())) queueTrackerMessage(true);
+  }
   void enterCLIRescue();
 
   int  getRecentlyHeard(AdvertPath dest[], int max_num);
@@ -216,6 +220,18 @@ public:
   bool hasPendingWork() const;
 
 private:
+  void queueTrackerMessage(bool help);
+  void sendTrackerMessages();
+  Tracker _tracker;
+  struct TrackerMessage {
+    char text[MAX_TEXT_LEN + 1] = {};
+    uint32_t timestamp = 0;
+    uint32_t next_contact = 0;
+    bool pending = false;
+  };
+  TrackerMessage _location_message, _help_message;
+  uint32_t _tracker_last_attempt = 0;
+
   void writeOKFrame();
   void writeErrFrame(uint8_t err_code);
   void writeDisabledFrame();

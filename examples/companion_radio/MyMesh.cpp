@@ -943,6 +943,7 @@ MyMesh::MyMesh(mesh::Radio &radio, mesh::RNG &rng, mesh::RTCClock &rtc, SimpleMe
 }
 
 void MyMesh::begin() {
+  _tracker.begin(millis());
   BaseChatMesh::begin();
 
   if (!_store->loadMainIdentity(self_id)) {
@@ -2414,6 +2415,8 @@ void MyMesh::checkSerialInterface() {
 
 void MyMesh::loop() {
   BaseChatMesh::loop();
+  if (_tracker.locationDue(millis())) queueTrackerMessage(false);
+  sendTrackerMessages();
 
   if (_cli_rescue) {
     checkCLIRescueCmd();
@@ -2433,6 +2436,50 @@ void MyMesh::loop() {
   }
 }
 
+void MyMesh::queueTrackerMessage(bool help) {
+  TrackerMessage& message = help ? _help_message : _location_message;
+  if (message.pending) return;
+  message.text[0] = 0;
+#if ENV_INCLUDE_GPS == 1
+  LocationProvider* location = sensors.getLocationProvider();
+  if (_prefs.gps_enabled && location && location->hasFreshFix()) {
+    Tracker::formatLocation(message.text, sizeof(message.text),
+        location->getLatitude(), location->getLongitude(),
+        location->getHDOP(), location->satellitesInView());
+  }
+#endif
+  if (help) {
+    char location[MAX_TEXT_LEN + 1];
+    StrHelper::strncpy(location, message.text, sizeof(location));
+    snprintf(message.text, sizeof(message.text), "HELP! I need assistance. %s",
+        location[0] ? location : "GPS location unavailable.");
+  } else if (!message.text[0]) {
+    return;
+  }
+  message.timestamp = getRTCClock()->getCurrentTime();
+  message.next_contact = MAX_ANON_CONTACTS;
+  message.pending = true;
+}
+
+void MyMesh::sendTrackerMessages() {
+  // Drain the radio queue between recipients instead of exhausting the packet pool.
+  if (_mgr->getOutboundTotal() || uint32_t(millis() - _tracker_last_attempt) < 1000) return;
+  TrackerMessage& message = _help_message.pending ? _help_message : _location_message;
+  if (!message.pending) return;
+  ContactInfo contact;
+  while (getContactByIdx(message.next_contact, contact)) {
+    if (contact.type == ADV_TYPE_CHAT && contact.isFav()) {
+      uint32_t ack, timeout;
+      _tracker_last_attempt = millis();
+      if (sendMessage(contact, message.timestamp, 0, message.text, ack, timeout) == MSG_SEND_FAILED) return;
+      message.next_contact++;
+      return;
+    }
+    message.next_contact++;
+  }
+  message.pending = false;
+}
+
 bool MyMesh::advert() {
   mesh::Packet* pkt;
   if (_prefs.advert_loc_policy == ADVERT_LOC_NONE) {
@@ -2450,5 +2497,6 @@ bool MyMesh::advert() {
 
 // To check if there is pending work
 bool MyMesh::hasPendingWork() const {
-  return _mgr->getOutboundTotal() > 0 || dirty_contacts_expiry != 0;
+  return _mgr->getOutboundTotal() > 0 || dirty_contacts_expiry != 0 ||
+      _help_message.pending || _location_message.pending;
 }

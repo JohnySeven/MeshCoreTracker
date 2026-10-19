@@ -16,7 +16,10 @@ public:
     virtual long getLongitude() = 0;
     virtual long getAltitude() = 0;
     virtual long satellitesCount() = 0;
+    virtual long satellitesInView() { return -1; } // -1 when unavailable
+    virtual long getHDOP() { return -1; } // tenths; -1 when unavailable
     virtual bool isValid() = 0;
+    virtual bool hasFreshFix() { return isEnabled() && isValid(); }
     virtual long getTimestamp() = 0;
     virtual void sendSentence(const char * sentence);
     virtual bool waitFor(const char* prefix, uint32_t timeout_ms) { return false; }

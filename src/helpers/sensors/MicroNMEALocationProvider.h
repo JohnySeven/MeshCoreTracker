@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LocationProvider.h"
+#include "NMEASatellites.h"
 #include <MicroNMEA.h>
 #include <RTClib.h>
 #include <helpers/RefCountedDigitalPin.h>
@@ -41,6 +42,7 @@
 class MicroNMEALocationProvider : public LocationProvider {
     char _nmeaBuffer[100];
     MicroNMEA nmea;
+    NMEASatellites satellites;
     mesh::RTCClock* _clock;
     Stream* _gps_serial;
     RefCountedDigitalPin* _peripher_power;
@@ -114,6 +116,8 @@ public :
 
     void begin() override {
         _begin_calls++;
+        _fix_seen = false;
+        satellites = NMEASatellites();
         claim();
         if (_pin_en != -1) {
             digitalWrite(_pin_en, GPS_EN_ACTIVE);
@@ -166,7 +170,12 @@ public :
         return alt;
     }
     long satellitesCount() override { return nmea.getNumSatellites(); }
+    long satellitesInView() override { return satellites.count(millis()); }
+    long getHDOP() override { return nmea.getHDOP() == 255 ? -1 : nmea.getHDOP(); }
     bool isValid() override { return nmea.isValid(); }
+    bool hasFreshFix() override {
+        return isEnabled() && isValid() && _fix_seen && ageMs(_last_fix_ms) <= 10000;
+    }
 
     long getTimestamp() override { 
         DateTime dt(nmea.getYear(), nmea.getMonth(),nmea.getDay(),nmea.getHour(),nmea.getMinute(),nmea.getSecond());
@@ -215,6 +224,7 @@ public :
             // sentence, then LF clears the now-empty buffer.
             if ((c == '\0' || c == '\r' || c == '\n') && nmea.getSentence()[0] != '\0') {
                 if (MicroNMEA::testChecksum(nmea.getSentence())) {
+                    satellites.update(nmea.getSentence(), millis());
                     _nmea_checksum_ok++;
                     _last_nmea_ms = millis();
                     _nmea_seen = true;
